@@ -1,5 +1,6 @@
 import React, { Component } from "react";
-import { Container, Row, Col, Form, FormGroup, Label, Input, Button, Alert } from "reactstrap";
+import { Container, Row, Col, Label, Input } from "reactstrap";
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 class MoviesSearch extends Component {
@@ -10,14 +11,39 @@ class MoviesSearch extends Component {
       countries: ["Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Anguilla", "Antigua &amp; Barbuda", "Argentina", "Armenia", "Aruba", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bermuda", "Bhutan", "Bolivia", "Bosnia &amp; Herzegovina", "Botswana", "Brazil", "British Virgin Islands", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Cape Verde", "Cayman Islands", "Chad", "Chile", "China", "Colombia", "Congo", "Cook Islands", "Costa Rica", "Cote D Ivoire", "Croatia", "Cruise Ship", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Estonia", "Ethiopia", "Falkland Islands", "Faroe Islands", "Fiji", "Finland", "France", "French Polynesia", "French West Indies", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Gibraltar", "Greece", "Greenland", "Grenada", "Guam", "Guatemala", "Guernsey", "Guinea", "Guinea Bissau", "Guyana", "Haiti", "Honduras", "Hong Kong", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Isle of Man", "Israel", "Italy", "Jamaica", "Japan", "Jersey", "Jordan", "Kazakhstan", "Kenya", "Kuwait", "Kyrgyz Republic", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Macau", "Macedonia", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Mauritania", "Mauritius", "Mexico", "Moldova", "Monaco", "Mongolia", "Montenegro", "Montserrat", "Morocco", "Mozambique", "Namibia", "Nepal", "Netherlands", "Netherlands Antilles", "New Caledonia", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", "Qatar", "Reunion", "Romania", "Russia", "Rwanda", "Saint Pierre &amp; Miquelon", "Samoa", "San Marino", "Satellite", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka", "St Kitts &amp; Nevis", "St Lucia", "St Vincent", "St. Lucia", "Sudan", "Suriname", "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor L'Este", "Togo", "Tonga", "Trinidad &amp; Tobago", "Tunisia", "Turkey", "Turkmenistan", "Turks &amp; Caicos", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Virgin Islands (US)", "Yemen", "Zambia", "Zimbabwe"],
       genres: ["Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "Film Noir", "History", "Horror", "Music", "Musical", "Mystery", "Romance", "Sci-Fi", "Short Film", "Sport", "Superhero", "Thriller", "War", "Western"],
       movies: [],
-      more_details_id: ""
+      pager: "",
+      more_details_id: "",
+      title_search: "",
+      date_search: "",
+      director_search: "",
+      country_filter: "",
+      language_filter: "",
+      genre_filter: "",
+      date_sort: false,
+      date_sort_asc: false,
+      duration_sort: false,
+      duration_sort_asc: false
     };
   }
 
   componentDidMount = () => {
+    const params = new URLSearchParams(window.location.search);
+    const page = parseInt(params.get("page")) || 1;
+    this.loadPage(page);
+  };
+
+  componentDidUpdate = () => {
+    const params = new URLSearchParams(window.location.search);
+    const page = parseInt(params.get("page")) || 1;
+    if (page !== this.state.pager.currentPage && this.state.movies.length > 0) {
+      this.loadPage(page);
+    }
+  };
+
+  loadPage = page => {
     let requestOptions = {
       method: "GET",
-      url: "http://localhost:5000/api/movies-search"
+      url: `http://localhost:5000/api/movies-search?page=${page}&title=${this.state.title_search}&date_published=${this.state.date_search}&director=${this.state.director_search}&country=${this.state.country_filter}&language=${this.state.language_filter}&genre=${this.state.language_filter}&sort_date${this.state.date_sort}&sort_date_asc=${this.state.date_sort_asc}&sort_duration=${this.state.duration_sort}&sort_duration_asc=${this.state.duration_sort_asc}`
     };
 
     axios(requestOptions).then(res => {
@@ -25,8 +51,13 @@ class MoviesSearch extends Component {
         console.log(res);
         if (res.data.status === 200) {
           this.setState({
-            movies: res.data.data
+            movies: res.data.pageOfMovies,
+            pager: res.data.pager
           });
+          const params = new URLSearchParams(window.location.search);
+          console.log(params);
+          params.set("page", res.data.pager.currentPage);
+          window.history.replaceState(null, null, "?" + params.toString());
         }
       }
     });
@@ -56,16 +87,13 @@ class MoviesSearch extends Component {
             <Col>
               <Input type="text" placeholder="Search Title" />
             </Col>
-            <Col>
-              <Input type="text" placeholder="Search Director" />
-            </Col>
           </Row>
           <Row className="mb-4">
             <Col>
-              <Input type="date" placeholder="Search Date" />
+              <Input type="text" placeholder="Search Director" />
             </Col>
             <Col>
-              <Input type="number" placeholder="Search Duration" />
+              <Input type="date" placeholder="Search Date" />
             </Col>
           </Row>
           <Row className="ml-1 mr-1">
@@ -226,6 +254,39 @@ class MoviesSearch extends Component {
               )}
             </Col>
           </Row>
+          <div className="card-footer pb-0 pt-3">
+            {this.state.pager.pages && this.state.pager.pages.length && (
+              <ul className="pagination justify-content-center">
+                <li className={`page-item first-item ${this.state.pager.currentPage === 1 ? "disabled" : ""}`}>
+                  <Link to={{ search: `?page=1` }} className="page-link">
+                    First
+                  </Link>
+                </li>
+                <li className={`page-item previous-item ${this.state.pager.currentPage === 1 ? "disabled" : ""}`}>
+                  <Link to={{ search: `?page=${this.state.pager.currentPage - 1}` }} className="page-link">
+                    Previous
+                  </Link>
+                </li>
+                {this.state.pager.pages.map(page => (
+                  <li key={page} className={`page-item number-item ${this.state.pager.currentPage === page ? "active" : ""}`}>
+                    <Link to={{ search: `?page=${page}` }} className="page-link">
+                      {page}
+                    </Link>
+                  </li>
+                ))}
+                <li className={`page-item next-item ${this.state.pager.currentPage === this.state.pager.totalPages ? "disabled" : ""}`}>
+                  <Link to={{ search: `?page=${this.state.pager.currentPage + 1}` }} className="page-link">
+                    Next
+                  </Link>
+                </li>
+                <li className={`page-item last-item ${this.state.pager.currentPage === this.state.pager.totalPages ? "disabled" : ""}`}>
+                  <Link to={{ search: `?page=${this.state.pager.totalPages}` }} className="page-link">
+                    Last
+                  </Link>
+                </li>
+              </ul>
+            )}
+          </div>
         </div>
       </React.Fragment>
     );
