@@ -43,24 +43,44 @@ class MoviesSearch extends Component {
   loadPage = page => {
     let requestOptions = {
       method: "GET",
-      url: `http://localhost:5000/api/movies-search?page=${page}&title=${this.state.title_search}&date_published=${this.state.date_search}&director=${this.state.director_search}&country=${this.state.country_filter}&language=${this.state.language_filter}&genre=${this.state.language_filter}&sort_date${this.state.date_sort}&sort_date_asc=${this.state.date_sort_asc}&sort_duration=${this.state.duration_sort}&sort_duration_asc=${this.state.duration_sort_asc}`
+      url: `http://localhost:5000/api/movies-search?page=${page}&title=${this.state.title_search.trim()}&date_published=${this.state.date_search}&director=${this.state.director_search.trim()}&country=${this.state.country_filter.trim()}&language=${this.state.language_filter.trim()}&genre=${this.state.genre_filter.trim()}&sort_date=${this.state.date_sort}&sort_date_asc=${this.state.date_sort_asc}&sort_duration=${this.state.duration_sort}&sort_duration_asc=${this.state.duration_sort_asc}`
     };
 
     axios(requestOptions).then(res => {
       if (res.status === 200) {
-        console.log(res);
         if (res.data.status === 200) {
           this.setState({
             movies: res.data.pageOfMovies,
             pager: res.data.pager
           });
           const params = new URLSearchParams(window.location.search);
-          console.log(params);
           params.set("page", res.data.pager.currentPage);
           window.history.replaceState(null, null, "?" + params.toString());
         }
       }
     });
+  };
+
+  changeHandler = async event => {
+    await this.setState({
+      [event.target.name]: event.target.value
+    });
+    if (this.state.country_filter === "select country") {
+      this.setState({
+        country_filter: ""
+      });
+    }
+    if (this.state.language_filter === "select language") {
+      this.setState({
+        language_filter: ""
+      });
+    }
+    if (this.state.genre_filter === "select genre") {
+      this.setState({
+        genre_filter: ""
+      });
+    }
+    this.loadPage(this.state.pager.currentPage);
   };
 
   moreDetails = id => {
@@ -75,6 +95,82 @@ class MoviesSearch extends Component {
     });
   };
 
+  latestToPast = async () => {
+    await this.setState({
+      date_sort: true,
+      date_sort_asc: false,
+      duration_sort: false,
+      duration_sort_asc: false
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("latest_to_past");
+  };
+
+  pastToLatest = async () => {
+    await this.setState({
+      date_sort: true,
+      date_sort_asc: true,
+      duration_sort: false,
+      duration_sort_asc: false
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("past_to_latest");
+  };
+
+  longerToSmaller = async () => {
+    await this.setState({
+      date_sort: false,
+      date_sort_asc: false,
+      duration_sort: true,
+      duration_sort_asc: false
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("longer_to_smaller");
+  };
+
+  smallerToLonger = async () => {
+    await this.setState({
+      date_sort: false,
+      date_sort_asc: false,
+      duration_sort: true,
+      duration_sort_asc: true
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("smaller_to_longer");
+  };
+
+  disableButton = id => {
+    const ids = ["longer_to_smaller", "smaller_to_longer", "latest_to_past", "past_to_latest"];
+    for (let i = 0; i < ids.length; i++) {
+      if (id === ids[i]) {
+        document.getElementById(ids[i]).disabled = true;
+      } else {
+        document.getElementById(ids[i]).disabled = false;
+      }
+    }
+  };
+
+  clearFilter = async () => {
+    await this.setState({
+      country_filter: "",
+      language_filter: "",
+      genre_filter: ""
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("none");
+  };
+
+  clearSort = async () => {
+    await this.setState({
+      date_sort: false,
+      date_sort_asc: false,
+      duration_sort: false,
+      duration_sort_asc: false
+    });
+    this.loadPage(this.state.pager.currentPage);
+    this.disableButton("none");
+  };
+
   render() {
     return (
       <React.Fragment>
@@ -85,15 +181,15 @@ class MoviesSearch extends Component {
           </h1>
           <Row className="mb-2">
             <Col>
-              <Input type="text" placeholder="Search Title" />
+              <Input type="text" name="title_search" onChange={this.changeHandler} placeholder="Search Title" />
             </Col>
           </Row>
           <Row className="mb-4">
             <Col>
-              <Input type="text" placeholder="Search Director" />
+              <Input type="text" name="director_search" onChange={this.changeHandler} placeholder="Search Director" />
             </Col>
             <Col>
-              <Input type="date" placeholder="Search Date" />
+              <Input type="date" name="date_search" onChange={this.changeHandler} placeholder="Search Date" />
             </Col>
           </Row>
           <Row className="ml-1 mr-1">
@@ -104,7 +200,7 @@ class MoviesSearch extends Component {
               <Label>
                 <strong>Country</strong>
               </Label>
-              <Input type="select" className="mb-2">
+              <Input type="select" name="country_filter" value={this.state.country_filter} onChange={this.changeHandler} className="mb-2">
                 <option>select country</option>
                 {this.state.countries.map(country => (
                   <option>{country}</option>
@@ -113,7 +209,7 @@ class MoviesSearch extends Component {
               <Label>
                 <strong>Languages</strong>
               </Label>
-              <Input type="select" className="mb-2">
+              <Input type="select" name="language_filter" value={this.state.language_filter} onChange={this.changeHandler} className="mb-2">
                 <option>select language</option>
                 {this.state.languages.map(language => (
                   <option>{language}</option>
@@ -122,13 +218,15 @@ class MoviesSearch extends Component {
               <Label>
                 <strong>Genre</strong>
               </Label>
-              <Input type="select" className="mb-2">
+              <Input type="select" name="genre_filter" value={this.state.genre_filter} onChange={this.changeHandler} className="mb-2">
                 <option>select genre</option>
                 {this.state.genres.map(genre => (
                   <option>{genre}</option>
                 ))}
               </Input>
-              <button className="btn btn-primary btn-sm mt-2 mb-2">Clear Filter</button>
+              <button className="btn btn-primary btn-sm mt-2 mb-2" onClick={this.clearFilter}>
+                Clear Filter
+              </button>
               <h4 className="mt-2">
                 <strong>Sort</strong>
               </h4>
@@ -136,16 +234,26 @@ class MoviesSearch extends Component {
                 <strong>Date of Publish</strong>
               </Label>
               <br></br>
-              <button className="btn btn-info btn-sm mr-2">Latest to Past</button>
-              <button className="btn btn-info btn-sm">Past to Latest</button>
+              <button className="btn btn-info btn-sm mr-2" id="latest_to_past" onClick={this.latestToPast}>
+                Latest to Past
+              </button>
+              <button className="btn btn-info btn-sm" id="past_to_latest" onClick={this.pastToLatest}>
+                Past to Latest
+              </button>
               <br></br>
               <Label className="mt-2">
                 <strong>Duration</strong>
               </Label>
               <br></br>
-              <button className="btn btn-info btn-sm mb-2 mr-2">Longer to Smaller</button>
-              <button className="btn btn-info btn-sm mb-2">Smaller to Longer</button>
-              <button className="btn btn-primary btn-sm mt-2 mb-2">Clear Sort</button>
+              <button className="btn btn-info btn-sm mb-2 mr-2" id="longer_to_smaller" onClick={this.longerToSmaller}>
+                Longer to Smaller
+              </button>
+              <button className="btn btn-info btn-sm mb-2" id="smaller_to_longer" onClick={this.smallerToLonger}>
+                Smaller to Longer
+              </button>
+              <button className="btn btn-primary btn-sm mt-2 mb-2" onClick={this.clearSort}>
+                Clear Sort
+              </button>
             </Col>
             <Col className="p-2">
               {this.state.movies.length > 0 ? (
